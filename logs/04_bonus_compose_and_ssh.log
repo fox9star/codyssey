@@ -1,0 +1,66 @@
+================================================================================
+Codyssey Mission 1 - Bonus Tasks Log (Docker Compose, Env Vars, GitHub SSH Key)
+================================================================================
+
+# --- [1] 환경 변수(ENV) 주입으로 컨테이너 내부 리슨 포트(9090) 및 실행 모드 변경 ---
+$ docker run -d -p 8084:9090 --name my-web-env -e SERVER_PORT=9090 -e APP_ENV=custom-prod -e APP_VERSION=2.0.0 codyssey-web:1.0
+72c82f506ddbf6f6d4b5473a7e3e4426dd6a4dfb33fb621f6edfb668ba6d1d71
+
+$ curl -i http://localhost:8084/healthz
+HTTP/1.1 200 OK
+Server: nginx/1.27.5
+Date: Wed, 25 Nov 2026 18:25:11 GMT
+Content-Type: application/json
+Content-Length: 91
+Connection: keep-alive
+X-Workstation-Env: custom-prod
+X-Workstation-Version: 2.0.0
+
+{"status":"ok","service":"codyssey-web","env":"custom-prod","version":"2.0.0","port":9090}
+
+# --- [2] Docker Compose 멀티 컨테이너(web + api) 실행 및 내부 네트워크 통신 ---
+$ docker compose up -d --build
+[+] Running 4/4
+ ✔ Network codyssey-net              Created
+ ✔ Volume "codyssey-compose-data"    Created
+ ✔ Container codyssey-compose-api    Started
+ ✔ Container codyssey-compose-web    Started
+
+$ docker compose ps
+NAME                   IMAGE              COMMAND                  SERVICE   CREATED         STATUS                    PORTS
+codyssey-compose-api   codyssey-api:1.0   "python3 /app/server…"   api       3 seconds ago   Up 2 seconds              5000/tcp
+codyssey-compose-web   codyssey-web:1.0   "/docker-entrypoint.…"   web       3 seconds ago   Up 2 seconds (healthy)    0.0.0.0:8082->80/tcp, [::]:8082->80/tcp
+
+$ curl -i http://localhost:8082/healthz
+HTTP/1.1 200 OK
+Server: nginx/1.27.5
+Content-Type: application/json
+X-Workstation-Env: compose-staging
+X-Workstation-Version: 1.1.0
+
+{"status":"ok","service":"codyssey-web","env":"compose-staging","version":"1.1.0","port":80}
+
+# [컨테이너 간 서비스 디스커버리(DNS) 통신: web 컨테이너 -> http://api:5000/status]
+$ docker compose exec -T web curl -s http://api:5000/status
+{"service": "codyssey-companion-api", "status": "healthy", "hostname": "3cc8750ea377", "env": "compose-staging", "port": 5000, "persisted_request_count": 1, "timestamp_utc": "2026-11-25T18:26:14.561976+00:00"}
+
+$ docker compose exec -T web curl -s http://api:5000/status
+{"service": "codyssey-companion-api", "status": "healthy", "hostname": "3cc8750ea377", "env": "compose-staging", "port": 5000, "persisted_request_count": 2, "timestamp_utc": "2026-11-25T18:26:14.822489+00:00"}
+
+$ docker compose logs --tail=10
+codyssey-compose-api  | Starting Codyssey Companion API on 0.0.0.0:5000 (env=compose-staging)
+codyssey-compose-api  | [API] 172.18.0.3 - "GET /status HTTP/1.1" 200 -
+codyssey-compose-api  | [API] 172.18.0.3 - "GET /status HTTP/1.1" 200 -
+codyssey-compose-web  | /docker-entrypoint.sh: Configuration complete; ready for start up
+
+# --- [3] GitHub SSH 키(ED25519) 생성 및 권한/지문 확인 (개인키는 저장소 외부 ~/.ssh 에만 보관) ---
+$ ssh-keygen -t ed25519 -C "codyssey-dev@workstation.local" -f ~/.ssh/id_ed25519_codyssey -N ""
+Generating public/private ed25519 key pair.
+Your identification has been saved in /home/robot/.ssh/id_ed25519_codyssey
+Your public key has been saved in /home/robot/.ssh/id_ed25519_codyssey.pub
+The key fingerprint is:
+SHA256:HRqU3vhAkVIpqbM9SBD0JplA5wSNfWKiYlIv6850L9s codyssey-dev@workstation.local
+
+$ ls -la ~/.ssh/id_ed25519_codyssey*
+-rw------- 1 robot robot 432 Nov 26 03:25 /home/robot/.ssh/id_ed25519_codyssey
+-rw-r--r-- 1 robot robot 112 Nov 26 03:25 /home/robot/.ssh/id_ed25519_codyssey.pub

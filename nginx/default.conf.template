@@ -1,0 +1,22 @@
+server {
+    listen       ${SERVER_PORT};
+    server_name  localhost;
+
+    root   /usr/share/nginx/html;
+    index  index.html;
+
+    # 커스텀 응답 헤더 (환경 변수 주입 확인용)
+    add_header X-Workstation-Env "${APP_ENV}" always;
+    add_header X-Workstation-Version "${APP_VERSION}" always;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 컨테이너 헬스체크 및 환경 정보 확인 엔드포인트
+    location = /healthz {
+        access_log off;
+        default_type application/json;
+        return 200 '{"status":"ok","service":"codyssey-web","env":"${APP_ENV}","version":"${APP_VERSION}","port":${SERVER_PORT}}\n';
+    }
+}

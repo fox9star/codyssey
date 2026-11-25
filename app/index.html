@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codyssey Mission 1 - Developer Workstation</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="badge-row">
+        <span class="badge badge-primary">Codyssey Mission 1</span>
+        <span class="badge badge-success" id="status-badge">CONTAINER RUNNING</span>
+        <span class="badge badge-port" id="port-badge">Port: checking...</span>
+      </div>
+      <h1>내 컴퓨터에 개발자용 '작업실' 꾸미기</h1>
+      <p class="subtitle">
+        Linux CLI &middot; Docker Custom Image &middot; Port Mapping &middot; Bind Mount &amp; Volume &middot; Git/GitHub
+      </p>
+    </header>
+
+    <section class="info-banner">
+      <div class="info-item">
+        <span class="label">접속 URL (Address)</span>
+        <code id="current-url">http://localhost</code>
+      </div>
+      <div class="info-item">
+        <span class="label">호스트 포트 (Host Port)</span>
+        <code id="current-port">-</code>
+      </div>
+      <div class="info-item">
+        <span class="label">컨테이너 이미지</span>
+        <code>codyssey-web:1.0 (nginx:1.27-alpine)</code>
+      </div>
+      <div class="info-item">
+        <span class="label">콘텐츠 버전</span>
+        <code id="content-version">v1.0 (Initial Build)</code>
+      </div>
+    </section>
+
+    <main class="grid">
+      <article class="card">
+        <h2>1. Terminal &amp; Permissions</h2>
+        <p>리눅스 CLI 기반 디렉토리 관리 및 POSIX 파일 권한(<code>r/w/x</code>, <code>755</code>, <code>644</code>) 검증 완료</p>
+        <ul>
+          <li>절대 경로(<code>/home/...</code>) vs 상대 경로(<code>./</code>, <code>../</code>)</li>
+          <li>실행 스크립트 <code>chmod 755</code> 권한 부여 및 실행 확인</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>2. Custom Dockerfile</h2>
+        <p><code>nginx:1.27-alpine</code> 베이스에 환경변수, 헬스체크(<code>/healthz</code>), 커스텀 템플릿 구성</p>
+        <ul>
+          <li><code>ENV APP_ENV</code>, <code>SERVER_PORT</code> 동적 치환</li>
+          <li><code>HEALTHCHECK</code> + <code>curl -fsS /healthz</code></li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>3. Port Mapping &amp; Isolation</h2>
+        <p>격리된 컨테이너 네트워크와 호스트 포트를 연결하여 다중 인스턴스 동시 운영 검증</p>
+        <ul>
+          <li><code>-p 8080:80</code> (첫 번째 웹 컨테이너)</li>
+          <li><code>-p 8081:80</code> (두 번째 웹 컨테이너)</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>4. Bind Mount &amp; Volume</h2>
+        <p>호스트 파일 실시간 반영(Bind Mount)과 컨테이너 삭제 후 데이터 영속성(Docker Volume) 검증</p>
+        <ul>
+          <li>Bind Mount: 호스트 코드 수정 즉시 반영</li>
+          <li>Named Volume: <code>codyssey-data</code> 영속 저장</li>
+        </ul>
+      </article>
+    </main>
+
+    <section class="health-box">
+      <h3>실시간 컨테이너 헬스체크 (<code>GET /healthz</code>)</h3>
+      <pre id="health-output">Loading /healthz response...</pre>
+    </section>
+
+    <footer>
+      <p>Codyssey Developer Workstation Environment &mdash; Reproducible &amp; Isolated Container Architecture</p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const urlEl = document.getElementById('current-url');
+      const portEl = document.getElementById('current-port');
+      const portBadge = document.getElementById('port-badge');
+      const healthOutput = document.getElementById('health-output');
+
+      const port = window.location.port || '80';
+      urlEl.textContent = window.location.href;
+      portEl.textContent = port + ' -> Container:80';
+      portBadge.textContent = 'Host Port: ' + port;
+
+      fetch('/healthz')
+        .then((res) => res.text())
+        .then((txt) => {
+          healthOutput.textContent = txt.trim();
+        })
+        .catch((err) => {
+          healthOutput.textContent = 'Healthcheck endpoint error: ' + err;
+        });
+    })();
+  </script>
+</body>
+</html>

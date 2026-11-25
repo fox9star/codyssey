@@ -1,0 +1,65 @@
+================================================================================
+Codyssey Mission 1 - Bind Mount & Docker Volume Persistence Verification Log
+================================================================================
+
+# --- [1] 바인드 마운트(Bind Mount) 호스트 파일 수정 전/후 비교 ---
+$ docker run -d -p 8083:80 --name my-web-bind -v "C:/Users/스퀘어-1/codyssey-bind-site:/usr/share/nginx/html" codyssey-web:1.0
+ebbd968b9ae165bb849288c29ee1ca846cd30e3674b01de15ecb24e5220172b4
+
+# [호스트 파일 수정 전]
+$ curl -s http://localhost:8083 | grep content-version
+        <code id="content-version">v1.0 (Initial Build)</code>
+
+# [호스트 index.html 수정 수행 (컨테이너 재빌드/재시작 없음)]
+# v1.0 (Initial Build) -> v2.0 (Live Updated via Host Bind Mount!)
+
+# [호스트 파일 수정 후 즉시 확인]
+$ curl -s http://localhost:8083 | grep content-version
+        <code id="content-version">v2.0 (Live Updated via Host Bind Mount!)</code>
+
+# --- [2] Docker 볼륨(codyssey-data) 생성 및 컨테이너 삭제 전/후 영속성 검증 ---
+$ docker volume create codyssey-data
+codyssey-data
+
+$ docker volume ls
+DRIVER    VOLUME NAME
+local     codyssey-data
+
+$ docker volume inspect codyssey-data
+[
+    {
+        "CreatedAt": "2026-11-25T18:25:07Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/codyssey-data/_data",
+        "Name": "codyssey-data",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+# [1단계: 컨테이너 vol-test-1 생성 후 볼륨(/data)에 파일 기록]
+$ docker run -d --name vol-test-1 -v codyssey-data:/data ubuntu:24.04 sleep infinity
+aae7bdc134dc976de9c9ccb6765666dcca9adfdc33fcb8b662a05ecd9b365f93
+
+$ docker exec vol-test-1 bash -c "echo 'Codyssey Persistent Volume Data - Created in vol-test-1' > /data/persistence_proof.txt && date -u '+Created At (UTC): %Y-%m-%dT%H:%M:%SZ' >> /data/persistence_proof.txt && cat /data/persistence_proof.txt"
+Codyssey Persistent Volume Data - Created in vol-test-1
+Created At (UTC): 2026-11-25T18:25:08Z
+
+# [2단계: 컨테이너 vol-test-1 완전 삭제]
+$ docker rm -f vol-test-1
+vol-test-1
+$ docker ps -a --filter "name=vol-test"
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+
+# [3단계: 새로운 컨테이너 vol-test-2에 동일 볼륨(codyssey-data) 연결 후 데이터 보존 확인]
+$ docker run -d --name vol-test-2 -v codyssey-data:/data ubuntu:24.04 sleep infinity
+2272c1385098717d7d46062c2668882dde3be7eec4c35267443d49e7c0f6301f
+
+$ docker exec vol-test-2 bash -c "ls -la /data && cat /data/persistence_proof.txt"
+total 12
+drwxr-xr-x 2 root root 4096 Nov 25 18:25 .
+drwxr-xr-x 1 root root 4096 Nov 25 18:25 ..
+-rw-r--r-- 1 root root   95 Nov 25 18:25 persistence_proof.txt
+Codyssey Persistent Volume Data - Created in vol-test-1
+Created At (UTC): 2026-11-25T18:25:08Z

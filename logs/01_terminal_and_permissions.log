@@ -1,0 +1,90 @@
+================================================================================
+Codyssey Mission 1 - Terminal Operations & Permission Experiments Log
+Environment: Ubuntu 24.04.3 LTS (WSL2, Linux 6.18.58.1-microsoft-standard-WSL2)
+Shell: GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)
+================================================================================
+
+$ pwd
+/home/robot
+
+$ mkdir -p ~/codyssey/mission1/practice
+$ cd ~/codyssey/mission1/practice
+$ pwd
+/home/robot/codyssey/mission1/practice
+
+$ touch .hidden_config empty.txt readme_note.txt
+$ echo "Codyssey Mission 1 - Developer Workstation Setup" > readme_note.txt
+$ cat readme_note.txt
+Codyssey Mission 1 - Developer Workstation Setup
+
+$ ls -la
+total 12
+drwxr-xr-x 2 robot robot 4096 Nov 26 03:23 .
+drwxr-xr-x 3 robot robot 4096 Nov 26 03:23 ..
+-rw-r--r-- 1 robot robot    0 Nov 26 03:23 .hidden_config
+-rw-r--r-- 1 robot robot    0 Nov 26 03:23 empty.txt
+-rw-r--r-- 1 robot robot   49 Nov 26 03:23 readme_note.txt
+
+$ cp readme_note.txt readme_copy.txt
+$ mkdir -p backup
+$ mv readme_copy.txt backup/readme_archived.txt
+$ rm empty.txt
+$ ls -la
+total 16
+drwxr-xr-x 3 robot robot 4096 Nov 26 03:23 .
+drwxr-xr-x 3 robot robot 4096 Nov 26 03:23 ..
+-rw-r--r-- 1 robot robot    0 Nov 26 03:23 .hidden_config
+drwxr-xr-x 2 robot robot 4096 Nov 26 03:23 backup
+-rw-r--r-- 1 robot robot   49 Nov 26 03:23 readme_note.txt
+
+$ ls -la backup/
+total 12
+drwxr-xr-x 2 robot robot 4096 Nov 26 03:23 .
+drwxr-xr-x 3 robot robot 4096 Nov 26 03:23 ..
+-rw-r--r-- 1 robot robot   49 Nov 26 03:23 readme_archived.txt
+
+$ cat backup/readme_archived.txt
+Codyssey Mission 1 - Developer Workstation Setup
+
+# --- 상대 경로 vs 절대 경로 이동 ---
+$ cd backup && pwd
+/home/robot/codyssey/mission1/practice/backup
+$ cd .. && pwd
+/home/robot/codyssey/mission1/practice
+$ cd /home/robot/codyssey/mission1/practice && pwd
+/home/robot/codyssey/mission1/practice
+
+# --- 파일(deploy.sh) 및 디렉토리(workspace_sec) 권한 변경 실습 ---
+$ cat << 'EOF' > deploy.sh
+#!/usr/bin/env bash
+echo "[SUCCESS] deploy.sh executed with permission $(stat -c '%a (%A)' "$0")"
+EOF
+$ mkdir -p workspace_sec
+
+# [변경 전] 파일 644 (-rw-r--r--), 디렉토리 755 (drwxr-xr-x)
+$ chmod 644 deploy.sh
+$ chmod 755 workspace_sec
+$ ls -ld deploy.sh workspace_sec
+-rw-r--r-- 1 robot robot   98 Nov 26 03:23 deploy.sh
+drwxr-xr-x 2 robot robot 4096 Nov 26 03:23 workspace_sec
+$ stat -c "%a %A %n" deploy.sh workspace_sec
+644 -rw-r--r-- deploy.sh
+755 drwxr-xr-x workspace_sec
+
+# [변경 전 실행 테스트] 실행 권한(x)이 없으므로 Permission denied 발생
+$ ./deploy.sh
+bash: ./deploy.sh: Permission denied
+
+# [변경 후] 파일 755 (-rwxr-xr-x), 디렉토리 700 (drwx------)
+$ chmod 755 deploy.sh
+$ chmod 700 workspace_sec
+$ ls -ld deploy.sh workspace_sec
+-rwxr-xr-x 1 robot robot   98 Nov 26 03:23 deploy.sh
+drwx------ 2 robot robot 4096 Nov 26 03:23 workspace_sec
+$ stat -c "%a %A %n" deploy.sh workspace_sec
+755 -rwxr-xr-x deploy.sh
+700 drwx------ workspace_sec
+
+# [변경 후 실행 테스트] 실행 권한(x) 부여 후 정상 실행
+$ ./deploy.sh
+[SUCCESS] deploy.sh executed with permission 755 (-rwxr-xr-x)

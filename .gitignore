@@ -1,0 +1,13 @@
+# Sensitive credentials & private keys (Never commit to Git)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.env.local
+.env.secret
+secrets/
+
+# OS / Editor metadata
+.DS_Store
+Thumbs.db
+.vscode/settings.json
